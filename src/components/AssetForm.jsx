@@ -1,9 +1,9 @@
 // src/components/AssetForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createAsset, updateAsset } from '../services/assetService';
+import Tesseract from 'tesseract.js';
 
 const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
-  // Si hay initialData, estamos en modo EDICIÓN. Si no, en modo CREAR.
   const [formData, setFormData] = useState({
     nombre: '',
     categoria: 'Desktop / PC',
@@ -19,7 +19,9 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const streamRef = useRef(null);
   
   const isEditing = !!initialData;
@@ -44,11 +46,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
   // Limpiar cámara al cerrar el modal
   useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
+    return () => stopCamera();
   }, []);
 
   const handleChange = (e) => {
@@ -56,71 +54,85 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Función para iniciar escaneo de códigos de barras/QR
-  const startScanning = async () => {
-    // Verificar soporte nativo del navegador
-    if (!window.BarcodeDetector) {
-      alert('Tu navegador no soporta escaneo nativo. Por favor escribe el serie manualmente.');
-      return;
-    }
-
+  const startCamera = async () => {
     setScanning(true);
+    setOcrProgress(0);
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } // Cámara trasera
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
       streamRef.current = stream;
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        
-        const detector = new window.BarcodeDetector({ formats: ['code_128', 'qr_code', 'ean_13', 'code_39'] });
-        
-        // Loop de detección
-        const detectCode = async () => {
-          if (!scanning || !videoRef.current) return;
-          
-          try {
-            const barcodes = await detector.detect(videoRef.current);
-            if (barcodes.length > 0) {
-              const code = barcodes[0].rawValue;
-              setFormData(prev => ({ ...prev, numero_serie: code }));
-              stopScanning();
-              alert(`✅ Serie detectado: ${code}`);
-            } else {
-              requestAnimationFrame(detectCode);
-            }
-          } catch (err) {
-            // Silenciar errores de frame vacío durante el loop
-          }
-        };
-        
-        detectCode();
       }
     } catch (err) {
-      console.error(err);
-      alert('No se pudo acceder a la cámara. Verifica permisos o usa HTTPS.');
+      alert('No se pudo acceder a la cámara. Verifica permisos.');
       setScanning(false);
     }
   };
 
-  const stopScanning = () => {
+  const captureAndReadText = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    setOcrProgress(10);
+    
+    // Capturar frame actual del video
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    setOcrProgress(30);
+
+    try {
+      // Procesar imagen con Tesseract
+      const result = await Tesseract.recognize(
+        canvas.toDataURL('image/png'),
+        'eng', // Idioma inglés (mejor para series alfanuméricos)
+        {
+          logger: (m) => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(30 + Math.round(m.progress * 70));
+            }
+          }
+        }
+      );
+
+      // Limpiar texto detectado: quitar espacios, saltos de línea y caracteres no alfanuméricos
+      const rawText = result.data.text.trim();
+      const cleanedText = rawText.replace(/[^a-zA-Z0-9\-_.]/g, '').toUpperCase();
+      
+      if (cleanedText.length > 0) {
+        setFormData(prev => ({ ...prev, numero_serie: cleanedText }));
+        alert(`✅ Texto detectado: ${cleanedText}`);
+      } else {
+        alert('⚠️ No se detectó texto claro. Intenta acercar más la cámara o mejorar la iluminación.');
+      }
+      
+      stopCamera();
+    } catch (error) {
+      console.error(error);
+      alert('Error al procesar la imagen. Intenta de nuevo.');
+      setOcrProgress(0);
+    }
+  };
+
+  const stopCamera = () => {
     setScanning(false);
+    setOcrProgress(0);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (isEditing) {
         await updateAsset(initialData.id, formData);
@@ -129,7 +141,6 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
       }
       onSuccess();
     } catch (error) {
-      console.error(error);
       alert('Error al guardar: ' + error.message);
     } finally {
       setLoading(false);
@@ -140,18 +151,47 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
         
-        {/* Modal de Escaneo Superpuesto */}
+        {/* Modal de Cámara y OCR */}
         {scanning && (
-          <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center rounded-lg">
-            <video ref={videoRef} className="w-full h-64 object-cover bg-gray-900"></video>
-            <p className="text-white mt-4 font-bold text-lg">Apunta al código de barras o QR</p>
-            <p className="text-gray-300 text-sm mb-4">Mantén el dispositivo estable</p>
-            <button 
-              onClick={stopScanning}
-              className="px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
-            >
-              Cancelar Escaneo
-            </button>
+          <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center rounded-lg p-4">
+            <div className="relative w-full max-w-md border-4 border-indigo-500 rounded-lg overflow-hidden">
+              <video ref={videoRef} className="w-full h-64 object-cover bg-gray-900" autoPlay playsInline muted></video>
+              {/* Canvas oculto para capturar frames */}
+              <canvas ref={canvasRef} className="hidden"></canvas>
+              
+              {/* Guía visual centrada */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-48 h-12 border-2 border-yellow-400 opacity-70 rounded"></div>
+              </div>
+            </div>
+            
+            <p className="text-white mt-4 font-bold text-lg">Apunta al número de serie</p>
+            <p className="text-gray-300 text-sm mb-2 text-center">Asegura buena iluminación y enfoca el texto</p>
+            
+            {ocrProgress > 0 && (
+              <div className="w-full max-w-md bg-gray-700 rounded-full h-2.5 mb-4">
+                <div 
+                  className="bg-indigo-500 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${ocrProgress}%` }}
+                ></div>
+              </div>
+            )}
+            
+            <div className="flex gap-3 w-full max-w-md">
+              <button 
+                onClick={captureAndReadText}
+                disabled={ocrProgress > 0}
+                className="flex-1 py-3 bg-indigo-600 text-white rounded-md font-bold hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {ocrProgress > 0 ? 'Procesando...' : '📸 Capturar y Leer'}
+              </button>
+              <button 
+                onClick={stopCamera}
+                className="px-6 py-3 bg-red-600 text-white rounded-md font-bold hover:bg-red-700"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
 
@@ -168,7 +208,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           </button>
         </div>
 
-        {/* Formulario */}
+        {/* Formulario Original Conservado Completo */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
@@ -224,7 +264,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            {/* ✅ SERIE CON BOTÓN DE ESCANEO INTEGRADO */}
+            {/* ✅ SERIE CON BOTÓN DE ESCANEO OCR INTEGRADO */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Número de serie</label>
               <div className="flex gap-2">
@@ -238,15 +278,15 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                 />
                 <button 
                   type="button"
-                  onClick={startScanning}
+                  onClick={startCamera}
                   disabled={scanning}
                   className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-bold flex items-center justify-center min-w-[44px]"
-                  title="Escanear código de barras/QR"
+                  title="Escanear texto con cámara"
                 >
                   📷
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Soporta códigos de barras y QR</p>
+              <p className="text-xs text-gray-500 mt-1">Lee texto impreso, etiquetas y códigos</p>
             </div>
 
             {/* Ubicación */}
