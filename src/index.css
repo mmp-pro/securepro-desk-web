@@ -1,3 +1,118 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =========================================
+   VARIABLES DE TEMA (CLARO / OSCURO)
+   ========================================= */
+:root {
+  /* Modo Claro (Default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --accent-color: #4f46e5;
+  --accent-hover: #4338ca;
+  --danger-color: #ef4444;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+}
+
+.dark {
+  /* Modo Oscuro Premium */
+  --bg-primary: #0f172a;      /* Slate 900 */
+  --bg-secondary: #1e293b;    /* Slate 800 */
+  --bg-tertiary: #334155;     /* Slate 700 */
+  --text-primary: #f8fafc;    /* Slate 50 */
+  --text-secondary: #94a3b8;  /* Slate 400 */
+  --border-color: #334155;    /* Slate 700 */
+  --accent-color: #818cf8;    /* Indigo 400 (más vibrante en oscuro) */
+  --accent-hover: #6366f1;    /* Indigo 500 */
+  --danger-color: #f87171;    /* Red 400 */
+  --success-color: #34d399;   /* Emerald 400 */
+  --warning-color: #fbbf24;   /* Amber 400 */
+}
+
+/* =========================================
+   TRANSICIONES GLOBALES SUAVES
+   ========================================= */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* =========================================
+   CLASES UTILITARIAS PERSONALIZADAS
+   ========================================= */
+@layer components {
+  .card {
+    @apply rounded-lg shadow-sm border p-4;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .input-field {
+    @apply w-full rounded-md px-3 py-2 outline-none focus:ring-2 transition-colors;
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+  
+  .input-field:focus {
+    --tw-ring-color: var(--accent-color);
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 text-white;
+    background-color: var(--accent-color);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 text-white;
+    background-color: var(--danger-color);
+  }
+  .btn-danger:hover {
+    opacity: 0.9;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover {
+    opacity: 0.8;
+  }
+
+  .table-header {
+    @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-bottom-color: var(--border-color);
+  }
+
+  .table-row {
+    @apply divide-y transition-colors;
+    divide-color: var(--border-color);
+  }
+  .table-row tr:hover td {
+    background-color: var(--bg-tertiary);
+  }
+  
+  .table-cell {
+    @apply px-6 py-4 whitespace-nowrap text-sm;
+    color: var(--text-primary);
+  }
+}

@@ -158,19 +158,19 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
         
         {/* Modal de Cámara y OCR */}
         {scanning && (
-          <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center rounded-lg p-4">
-            <div className="relative w-full max-w-md border-4 border-indigo-500 rounded-lg overflow-hidden">
+          <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center rounded-lg p-4">
+            <div className="relative w-full max-w-md border-4 rounded-lg overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
               <video ref={videoRef} className="w-full h-64 object-cover bg-gray-900" autoPlay playsInline muted></video>
               <canvas ref={canvasRef} className="hidden"></canvas>
               
               {/* Guía visual centrada */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-12 border-2 border-yellow-400 opacity-70 rounded"></div>
+                <div className="w-48 h-12 border-2 rounded opacity-70" style={{ borderColor: 'var(--warning-color)' }}></div>
               </div>
             </div>
             
@@ -180,8 +180,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
             {ocrProgress > 0 && (
               <div className="w-full max-w-md bg-gray-700 rounded-full h-2.5 mb-4">
                 <div 
-                  className="bg-indigo-500 h-2.5 rounded-full transition-all duration-300" 
-                  style={{ width: `${ocrProgress}%` }}
+                  className="h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${ocrProgress}%`, backgroundColor: 'var(--accent-color)' }}
                 ></div>
               </div>
             )}
@@ -190,13 +190,13 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               <button 
                 onClick={captureAndReadText}
                 disabled={ocrProgress > 0}
-                className="flex-1 py-3 bg-indigo-600 text-white rounded-md font-bold hover:bg-indigo-700 disabled:opacity-50"
+                className="btn-primary flex-1 py-3 font-bold"
               >
                 {ocrProgress > 0 ? 'Procesando...' : '📸 Capturar y Leer'}
               </button>
               <button 
                 onClick={stopCamera}
-                className="px-6 py-3 bg-red-600 text-white rounded-md font-bold hover:bg-red-700"
+                className="btn-danger px-6 py-3 font-bold"
               >
                 Cancelar
               </button>
@@ -205,13 +205,14 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         )}
 
         {/* Encabezado del Modal */}
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">
+        <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {isEditing ? 'Editar Activo' : 'Nuevo Activo'}
           </h2>
           <button 
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+            className="text-2xl font-bold"
+            style={{ color: 'var(--text-secondary)' }}
           >
             &times;
           </button>
@@ -223,7 +224,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
             
             {/* Nombre */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del equipo *</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nombre del equipo *</label>
               <input
                 type="text"
                 name="nombre"
@@ -231,18 +232,18 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                 onChange={handleChange}
                 required
                 placeholder="Ej: Laptop Dell Latitude"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Categoría */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Categoría</label>
               <select
                 name="categoria"
                 value={formData.categoria}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               >
                 <option>Desktop / PC</option>
                 <option>Laptop</option>
@@ -259,12 +260,12 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
             {/* Estado */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Estado</label>
               <select
                 name="estado"
                 value={formData.estado}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               >
                 <option>Activo</option>
                 <option>En reparación</option>
@@ -275,7 +276,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
             {/* ✅ SERIE CON BOTÓN DE ESCANEO OCR INTEGRADO */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Número de serie</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Número de serie</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -283,63 +284,63 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                   value={formData.numero_serie}
                   onChange={handleChange}
                   placeholder="Ej: SN-123456789"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="input-field"
                 />
                 <button 
                   type="button"
                   onClick={startCamera}
                   disabled={scanning}
-                  className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-bold flex items-center justify-center min-w-[44px]"
+                  className="btn-secondary min-w-[44px]"
                   title="Escanear texto con cámara"
                 >
-                  
+                  📷
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Lee texto impreso, etiquetas y códigos</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Lee texto impreso, etiquetas y códigos</p>
             </div>
 
             {/* Ubicación */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Ubicación</label>
               <input
                 type="text"
                 name="ubicacion"
                 value={formData.ubicacion}
                 onChange={handleChange}
                 placeholder="Ej: Oficina 301, Piso 3"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Sucursal */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sucursal</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Sucursal</label>
               <input
                 type="text"
                 name="sucursal"
                 value={formData.sucursal}
                 onChange={handleChange}
                 placeholder="Ej: Sucursal Centro, Planta Norte"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Responsable */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Responsable</label>
               <input
                 type="text"
                 name="responsable"
                 value={formData.responsable}
                 onChange={handleChange}
                 placeholder="Ej: Juan Pérez"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Costo */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Costo ($)</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Costo ($)</label>
               <input
                 type="number"
                 name="costo"
@@ -348,25 +349,25 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                 placeholder="0.00"
                 min="0"
                 step="0.01"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Fecha de compra */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de compra</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Fecha de compra</label>
               <input
                 type="date"
                 name="fecha_compra"
                 value={formData.fecha_compra}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
 
             {/* Garantía */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Garantía (meses)</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Garantía (meses)</label>
               <input
                 type="number"
                 name="garantia"
@@ -374,24 +375,24 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                 onChange={handleChange}
                 placeholder="12"
                 min="0"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="input-field"
               />
             </div>
           </div>
 
           {/* Botones de acción */}
-          <div className="flex gap-3 pt-6 border-t mt-6">
+          <div className="flex gap-3 pt-6 border-t mt-6" style={{ borderColor: 'var(--border-color)' }}>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex-1 py-3"
             >
               {loading ? 'Guardando...' : (isEditing ? 'Actualizar Activo' : 'Guardar Activo')}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-md hover:bg-gray-300 font-medium transition-colors"
+              className="btn-secondary flex-1 py-3"
             >
               Cancelar
             </button>
