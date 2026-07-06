@@ -1,5 +1,5 @@
 // src/components/AssetForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createAsset, updateAsset } from '../services/assetService';
 
 const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
@@ -10,7 +10,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     estado: 'Activo',
     numero_serie: '',
     ubicacion: '',
-    sucursal: '', // ✅ NUEVO CAMPO SUCURSAL
+    sucursal: '', 
     responsable: '',
     costo: '',
     fecha_compra: '',
@@ -18,6 +18,10 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  
   const isEditing = !!initialData;
 
   // Precargar datos si estamos editando
@@ -29,7 +33,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         estado: initialData.estado || 'Activo',
         numero_serie: initialData.numero_serie || '',
         ubicacion: initialData.ubicacion || '',
-        sucursal: initialData.sucursal || '', // ✅ PRECARGAR SUCURSAL
+        sucursal: initialData.sucursal || '', 
         responsable: initialData.responsable || '',
         costo: initialData.costo || '',
         fecha_compra: initialData.fecha_compra || '',
@@ -38,9 +42,79 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     }
   }, [initialData]);
 
+  // Limpiar cámara al cerrar el modal
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Función para iniciar escaneo de códigos de barras/QR
+  const startScanning = async () => {
+    // Verificar soporte nativo del navegador
+    if (!window.BarcodeDetector) {
+      alert('Tu navegador no soporta escaneo nativo. Por favor escribe el serie manualmente.');
+      return;
+    }
+
+    setScanning(true);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Cámara trasera
+      });
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        
+        const detector = new window.BarcodeDetector({ formats: ['code_128', 'qr_code', 'ean_13', 'code_39'] });
+        
+        // Loop de detección
+        const detectCode = async () => {
+          if (!scanning || !videoRef.current) return;
+          
+          try {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes.length > 0) {
+              const code = barcodes[0].rawValue;
+              setFormData(prev => ({ ...prev, numero_serie: code }));
+              stopScanning();
+              alert(`✅ Serie detectado: ${code}`);
+            } else {
+              requestAnimationFrame(detectCode);
+            }
+          } catch (err) {
+            // Silenciar errores de frame vacío durante el loop
+          }
+        };
+        
+        detectCode();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo acceder a la cámara. Verifica permisos o usa HTTPS.');
+      setScanning(false);
+    }
+  };
+
+  const stopScanning = () => {
+    setScanning(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -64,7 +138,23 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        
+        {/* Modal de Escaneo Superpuesto */}
+        {scanning && (
+          <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center rounded-lg">
+            <video ref={videoRef} className="w-full h-64 object-cover bg-gray-900"></video>
+            <p className="text-white mt-4 font-bold text-lg">Apunta al código de barras o QR</p>
+            <p className="text-gray-300 text-sm mb-4">Mantén el dispositivo estable</p>
+            <button 
+              onClick={stopScanning}
+              className="px-6 py-2 bg-red-600 text-white rounded-md font-bold hover:bg-red-700 transition-colors"
+            >
+              Cancelar Escaneo
+            </button>
+          </div>
+        )}
+
         {/* Encabezado del Modal */}
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">
@@ -134,17 +224,29 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            {/* Serie */}
+            {/* ✅ SERIE CON BOTÓN DE ESCANEO INTEGRADO */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Número de serie</label>
-              <input
-                type="text"
-                name="numero_serie"
-                value={formData.numero_serie}
-                onChange={handleChange}
-                placeholder="Ej: SN-123456789"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="numero_serie"
+                  value={formData.numero_serie}
+                  onChange={handleChange}
+                  placeholder="Ej: SN-123456789"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button 
+                  type="button"
+                  onClick={startScanning}
+                  disabled={scanning}
+                  className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-bold flex items-center justify-center min-w-[44px]"
+                  title="Escanear código de barras/QR"
+                >
+                  📷
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Soporta códigos de barras y QR</p>
             </div>
 
             {/* Ubicación */}
@@ -160,7 +262,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               />
             </div>
 
-            {/* ✅ NUEVO CAMPO SUCURSAL */}
+            {/* Sucursal */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sucursal</label>
               <input
