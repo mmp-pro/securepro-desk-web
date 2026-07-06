@@ -2,17 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { getAssets } from '../services/assetService';
 import * as XLSX from 'xlsx';
-import RequireAdmin from './RequireAdmin'; // Importar componente de protección
+import RequireAdmin from './RequireAdmin';
 
-const AssetTable = ({ userRole }) => { // Recibir userRole como prop
+const AssetTable = ({ userRole, onEdit, onDelete }) => {
+  // ✅ TODOS LOS HOOKS VAN AL PRINCIPIO, ANTES DE CUALQUIER RETURN
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterCategoria, setFilterCategoria] = useState('Todas las categorías');
   const [filterEstado, setFilterEstado] = useState('Todos los estados');
 
+  // Hook para cargar datos
   useEffect(() => {
     loadAssets();
   }, []);
+
+  // Hook de diagnóstico (AHORA ESTÁ EN EL LUGAR CORRECTO)
+  useEffect(() => {
+    console.log('🔍 AssetTable - Props recibidas:', { 
+      userRole, 
+      onEdit: typeof onEdit, 
+      onDelete: typeof onDelete 
+    });
+  }, [userRole, onEdit, onDelete]);
 
   const loadAssets = async () => {
     try {
@@ -45,6 +56,7 @@ const AssetTable = ({ userRole }) => { // Recibir userRole como prop
     XLSX.writeFile(wb, `inventario_activos_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  // ✅ EL RETURN CONDICIONAL VA DESPUÉS DE TODOS LOS HOOKS
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
   }
@@ -105,7 +117,6 @@ const AssetTable = ({ userRole }) => { // Recibir userRole como prop
           </select>
         </div>
 
-        {/* SOLO ADMIN PUEDE EXPORTAR */}
         <RequireAdmin>
           <button 
             onClick={exportToExcel}
@@ -129,7 +140,6 @@ const AssetTable = ({ userRole }) => { // Recibir userRole como prop
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
                 
-                {/* Columna de Acciones solo visible para Admin */}
                 <RequireAdmin>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </RequireAdmin>
@@ -161,11 +171,34 @@ const AssetTable = ({ userRole }) => { // Recibir userRole como prop
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.ubicacion}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.responsable}</td>
                     
-                    {/* Botones de acción protegidos */}
                     <RequireAdmin>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <button className="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
-                        <button className="text-red-600 hover:text-red-900">Borrar</button>
+                        <button 
+                          onClick={() => {
+                            console.log('✏️ Clic en Editar - Asset:', asset);
+                            if (typeof onEdit === 'function') {
+                              onEdit(asset);
+                            } else {
+                              console.error('❌ onEdit NO es una función. Recibido:', onEdit);
+                            }
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium"
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => {
+                            console.log('🗑️ Clic en Borrar - ID:', asset.id);
+                            if (typeof onDelete === 'function') {
+                              onDelete(asset.id);
+                            } else {
+                              console.error('❌ onDelete NO es una función. Recibido:', onDelete);
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-900 font-medium"
+                        >
+                          Borrar
+                        </button>
                       </td>
                     </RequireAdmin>
                   </tr>

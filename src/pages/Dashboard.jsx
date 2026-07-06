@@ -3,11 +3,48 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import AssetTable from '../components/AssetTable';
 import AssetForm from '../components/AssetForm';
-import RequireAdmin from '../components/RequireAdmin'; // Importar nuevo componente
+import RequireAdmin from '../components/RequireAdmin';
+import { deleteAsset } from '../services/assetService'; // Importar función de borrar
 
 const Dashboard = () => {
   const { currentUser, logout, userRole } = useAuth();
+  
+  // Estados para controlar el formulario (Crear o Editar)
   const [showForm, setShowForm] = useState(false);
+  const [editingAsset, setEditingAsset] = useState(null); 
+
+  // Función que se ejecuta al dar clic en "Editar" en la tabla
+  const handleEdit = (asset) => {
+    setEditingAsset(asset); // Guardamos los datos del activo a editar
+    setShowForm(true);      // Abrimos el modal
+  };
+
+  // Función que se ejecuta al dar clic en "Borrar" en la tabla
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este activo permanentemente?')) {
+      try {
+        await deleteAsset(id);
+        alert('Activo eliminado correctamente');
+        window.location.reload(); // Recargamos para ver los cambios
+      } catch (error) {
+        console.error(error);
+        alert('Error al eliminar el activo');
+      }
+    }
+  };
+
+  // Función cuando se guarda exitosamente (Crear o Editar)
+  const handleSuccess = () => {
+    setShowForm(false);
+    setEditingAsset(null);
+    window.location.reload(); // Recargamos para ver los cambios
+  };
+
+  // Función para cancelar
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingAsset(null);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -24,7 +61,7 @@ const Dashboard = () => {
               <div className="text-right hidden sm:block">
                 <span className="block text-sm font-medium text-gray-900">{currentUser?.email}</span>
                 <span className="block text-xs text-indigo-600 uppercase font-bold tracking-wider">
-                  Rol: {userRole === 'admin' ? 'Administrador' : 'Auditor'}
+                  ROL: {userRole === 'admin' ? 'ADMINISTRADOR' : 'AUDITOR'}
                 </span>
               </div>
               <button 
@@ -43,10 +80,13 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Activos Fijos Tecnológicos</h2>
           
-          {/* SOLO ADMIN VE ESTE BOTÓN */}
+          {/* Botón solo visible para Admin */}
           <RequireAdmin>
             <button 
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setEditingAsset(null); // Aseguramos que esté en modo CREAR
+                setShowForm(true);
+              }}
               className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium transition-colors shadow-lg hover:shadow-xl"
             >
               + Nuevo activo
@@ -54,18 +94,20 @@ const Dashboard = () => {
           </RequireAdmin>
         </div>
 
-        {/* Pasamos el rol a la tabla para ocultar acciones de edición/borrado si es necesario */}
-        <AssetTable userRole={userRole} />
+        {/* Pasamos las funciones onEdit y onDelete a la tabla */}
+        <AssetTable 
+          userRole={userRole} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </main>
 
-      {/* Modal del formulario - Solo accesible si showForm es true (controlado por admin) */}
+      {/* Modal del Formulario (Sirve para Crear y Editar) */}
       {showForm && (
         <AssetForm 
-          onSuccess={() => {
-            setShowForm(false);
-            window.location.reload();
-          }}
-          onCancel={() => setShowForm(false)}
+          initialData={editingAsset} // Si es null, crea. Si tiene datos, edita.
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
         />
       )}
     </div>
