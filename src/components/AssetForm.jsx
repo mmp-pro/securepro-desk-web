@@ -1,14 +1,6 @@
 // src/components/AssetForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createAsset, updateAsset } from '../services/assetService';
-import Tesseract from 'tesseract.js/dist/tesseract.min.js';
-
-// Configuración CRÍTICA para producción (Vercel/Netlify)
-const workerOptions = {
-  workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-  langPath: 'https://tessdata.projectnaptha.com/',
-  corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-};
 
 const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -95,12 +87,22 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     setOcrProgress(30);
 
     try {
-      // Procesar imagen con Tesseract usando workerOptions para producción
-      const result = await Tesseract.recognize(
+      // ✅ CARGA DINÁMICA DESDE CDN (Evita errores de build en Vite/Vercel)
+      if (!window.Tesseract) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+
+      // Procesar imagen con Tesseract
+      const result = await window.Tesseract.recognize(
         canvas.toDataURL('image/png'),
         'eng', 
         {
-          ...workerOptions, // ← ESTO EVITA EL ERROR DE BUILD EN VERCEL
           logger: (m) => {
             if (m.status === 'recognizing text') {
               setOcrProgress(30 + Math.round(m.progress * 70));
