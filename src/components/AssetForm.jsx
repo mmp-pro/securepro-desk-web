@@ -10,6 +10,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     estado: 'Activo',
     numero_serie: '',
     ubicacion: '',
+    sucursal: '', // ✅ NUEVO CAMPO SUCURSAL
     responsable: '',
     costo: '',
     fecha_compra: '',
@@ -28,6 +29,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         estado: initialData.estado || 'Activo',
         numero_serie: initialData.numero_serie || '',
         ubicacion: initialData.ubicacion || '',
+        sucursal: initialData.sucursal || '', // ✅ PRECARGAR SUCURSAL
         responsable: initialData.responsable || '',
         costo: initialData.costo || '',
         fecha_compra: initialData.fecha_compra || '',
@@ -47,10 +49,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
     try {
       if (isEditing) {
-        // Actualizar activo existente
         await updateAsset(initialData.id, formData);
       } else {
-        // Crear nuevo activo
         await createAsset(formData);
       }
       onSuccess();
@@ -156,6 +156,19 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                 value={formData.ubicacion}
                 onChange={handleChange}
                 placeholder="Ej: Oficina 301, Piso 3"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            {/* ✅ NUEVO CAMPO SUCURSAL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sucursal</label>
+              <input
+                type="text"
+                name="sucursal"
+                value={formData.sucursal}
+                onChange={handleChange}
+                placeholder="Ej: Sucursal Centro, Planta Norte"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>

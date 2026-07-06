@@ -5,23 +5,22 @@ import * as XLSX from 'xlsx';
 import RequireAdmin from './RequireAdmin';
 
 const AssetTable = ({ userRole, onEdit, onDelete }) => {
-  // ✅ TODOS LOS HOOKS VAN AL PRINCIPIO, ANTES DE CUALQUIER RETURN
+  // ✅ TODOS LOS HOOKS VAN AL PRINCIPIO
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('Todas las categorías');
   const [filterEstado, setFilterEstado] = useState('Todos los estados');
-  // ✅ NUEVO ESTADO PARA FILTRO DE UBICACIÓN
   const [filterUbicacion, setFilterUbicacion] = useState('Todas las ubicaciones');
+  // ✅ NUEVO ESTADO PARA FILTRO DE SUCURSAL
+  const [filterSucursal, setFilterSucursal] = useState('Todas las sucursales');
   
   const fileInputRef = useRef(null);
 
-  // Hook para cargar datos iniciales
   useEffect(() => {
     loadAssets();
   }, []);
 
-  // Hook de diagnóstico
   useEffect(() => {
     console.log('🔍 AssetTable - Props recibidas:', { 
       userRole, 
@@ -41,7 +40,6 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     }
   };
 
-  // Manejador de importación con descarga automática de respaldo
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -58,18 +56,15 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
         return;
       }
 
-      // ✅ DESCARGA AUTOMÁTICA DEL ARCHIVO PROCESADO EN LA CARPETA DE DESCARGAS
       const ws = XLSX.utils.json_to_sheet(jsonData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Datos_Importados");
       const fileName = `respaldo_importacion_${new Date().toISOString().split('T')[0]}_${Date.now()}.xlsx`;
       XLSX.writeFile(wb, fileName); 
 
-      // Proceder con la carga masiva a Firebase
       const count = await bulkImportAssets(jsonData);
       alert(`✅ Se importaron ${count} activos exitosamente.\nEl archivo de respaldo se descargó automáticamente.`);
       
-      // Recargar la tabla para ver los nuevos datos
       await loadAssets();
     } catch (error) {
       console.error(error);
@@ -84,13 +79,14 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     fileInputRef.current?.click();
   };
 
-  // ✅ LÓGICA DE FILTRADO ACTUALIZADA CON UBICACIÓN
+  // ✅ LÓGICA DE FILTRADO ACTUALIZADA CON SUCURSAL
   const filteredAssets = assets.filter(asset => {
     const matchCategoria = filterCategoria === 'Todas las categorías' || asset.categoria === filterCategoria;
     const matchEstado = filterEstado === 'Todos los estados' || asset.estado === filterEstado;
     const matchUbicacion = filterUbicacion === 'Todas las ubicaciones' || asset.ubicacion === filterUbicacion;
+    const matchSucursal = filterSucursal === 'Todas las sucursales' || asset.sucursal === filterSucursal;
     
-    return matchCategoria && matchEstado && matchUbicacion;
+    return matchCategoria && matchEstado && matchUbicacion && matchSucursal;
   });
 
   const stats = {
@@ -107,7 +103,6 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     XLSX.writeFile(wb, `inventario_activos_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // ✅ EL RETURN CONDICIONAL VA DESPUÉS DE TODOS LOS HOOKS
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
   }
@@ -167,7 +162,6 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
             <option>Baja</option>
           </select>
 
-          {/* ✅ NUEVO SELECTOR DINÁMICO DE UBICACIONES */}
           <select 
             className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
             value={filterUbicacion}
@@ -178,9 +172,21 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
               <option key={ubicacion}>{ubicacion}</option>
             ))}
           </select>
+
+          {/* ✅ NUEVO SELECTOR DINÁMICO DE SUCURSALES */}
+          <select 
+            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            value={filterSucursal}
+            onChange={(e) => setFilterSucursal(e.target.value)}
+          >
+            <option>Todas las sucursales</option>
+            {[...new Set(assets.map(a => a.sucursal))].filter(Boolean).map((sucursal) => (
+              <option key={sucursal}>{sucursal}</option>
+            ))}
+          </select>
         </div>
 
-        {/* Botones de Acción Agrupados */}
+        {/* Botones de Acción */}
         <div className="flex gap-3">
           <input 
             ref={fileInputRef}
@@ -196,7 +202,6 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
               disabled={importing}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>{importing ? '' : ''}</span> 
               {importing ? 'Importando...' : 'Importar Excel'}
             </button>
           </RequireAdmin>
@@ -222,6 +227,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serie</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
                 
@@ -233,7 +239,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAssets.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'admin' ? 7 : 6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={userRole === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-gray-500">
                     No hay activos registrados
                   </td>
                 </tr>
@@ -253,6 +259,8 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{asset.numero_serie}</td>
+                    {/* ✅ NUEVA COLUMNA SUCURSAL */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.sucursal || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.ubicacion}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.responsable}</td>
                     
