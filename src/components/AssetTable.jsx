@@ -1,6 +1,6 @@
 // src/components/AssetTable.jsx
-import React, { useState, useEffect } from 'react';
-import { getAssets } from '../services/assetService';
+import React, { useState, useEffect, useRef } from 'react';
+import { getAssets, bulkImportAssets } from '../services/assetService';
 import * as XLSX from 'xlsx';
 import RequireAdmin from './RequireAdmin';
 
@@ -8,15 +8,20 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
   // ✅ TODOS LOS HOOKS VAN AL PRINCIPIO, ANTES DE CUALQUIER RETURN
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('Todas las categorías');
   const [filterEstado, setFilterEstado] = useState('Todos los estados');
+  // ✅ NUEVO ESTADO PARA FILTRO DE UBICACIÓN
+  const [filterUbicacion, setFilterUbicacion] = useState('Todas las ubicaciones');
+  
+  const fileInputRef = useRef(null);
 
-  // Hook para cargar datos
+  // Hook para cargar datos iniciales
   useEffect(() => {
     loadAssets();
   }, []);
 
-  // Hook de diagnóstico (AHORA ESTÁ EN EL LUGAR CORRECTO)
+  // Hook de diagnóstico
   useEffect(() => {
     console.log('🔍 AssetTable - Props recibidas:', { 
       userRole, 
@@ -36,10 +41,56 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     }
   };
 
+  // Manejador de importación con descarga automática de respaldo
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+      if (jsonData.length === 0) {
+        alert('⚠️ El archivo Excel está vacío o no tiene formato válido.');
+        return;
+      }
+
+      // ✅ DESCARGA AUTOMÁTICA DEL ARCHIVO PROCESADO EN LA CARPETA DE DESCARGAS
+      const ws = XLSX.utils.json_to_sheet(jsonData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Datos_Importados");
+      const fileName = `respaldo_importacion_${new Date().toISOString().split('T')[0]}_${Date.now()}.xlsx`;
+      XLSX.writeFile(wb, fileName); 
+
+      // Proceder con la carga masiva a Firebase
+      const count = await bulkImportAssets(jsonData);
+      alert(`✅ Se importaron ${count} activos exitosamente.\nEl archivo de respaldo se descargó automáticamente.`);
+      
+      // Recargar la tabla para ver los nuevos datos
+      await loadAssets();
+    } catch (error) {
+      console.error(error);
+      alert('❌ Error al importar: ' + error.message);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  // ✅ LÓGICA DE FILTRADO ACTUALIZADA CON UBICACIÓN
   const filteredAssets = assets.filter(asset => {
     const matchCategoria = filterCategoria === 'Todas las categorías' || asset.categoria === filterCategoria;
     const matchEstado = filterEstado === 'Todos los estados' || asset.estado === filterEstado;
-    return matchCategoria && matchEstado;
+    const matchUbicacion = filterUbicacion === 'Todas las ubicaciones' || asset.ubicacion === filterUbicacion;
+    
+    return matchCategoria && matchEstado && matchUbicacion;
   });
 
   const stats = {
@@ -115,16 +166,50 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
             <option>En resguardo</option>
             <option>Baja</option>
           </select>
+
+          {/* ✅ NUEVO SELECTOR DINÁMICO DE UBICACIONES */}
+          <select 
+            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            value={filterUbicacion}
+            onChange={(e) => setFilterUbicacion(e.target.value)}
+          >
+            <option>Todas las ubicaciones</option>
+            {[...new Set(assets.map(a => a.ubicacion))].filter(Boolean).map((ubicacion) => (
+              <option key={ubicacion}>{ubicacion}</option>
+            ))}
+          </select>
         </div>
 
-        <RequireAdmin>
-          <button 
-            onClick={exportToExcel}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
-          >
-            <span>📊</span> Exportar Excel
-          </button>
-        </RequireAdmin>
+        {/* Botones de Acción Agrupados */}
+        <div className="flex gap-3">
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            accept=".xlsx,.xls,.csv" 
+            onChange={handleImportExcel} 
+            className="hidden" 
+          />
+
+          <RequireAdmin>
+            <button 
+              onClick={triggerFileUpload}
+              disabled={importing}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>{importing ? '' : ''}</span> 
+              {importing ? 'Importando...' : 'Importar Excel'}
+            </button>
+          </RequireAdmin>
+
+          <RequireAdmin>
+            <button 
+              onClick={exportToExcel}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
+            >
+              <span>📊</span> Exportar Excel
+            </button>
+          </RequireAdmin>
+        </div>
       </div>
 
       {/* Tabla */}
