@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAssets } from '../services/assetService';
 import * as XLSX from 'xlsx';
+import RequireAdmin from './RequireAdmin'; // Importar componente de protección
 
-const AssetTable = () => {
+const AssetTable = ({ userRole }) => { // Recibir userRole como prop
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterCategoria, setFilterCategoria] = useState('Todas las categorías');
@@ -104,12 +105,15 @@ const AssetTable = () => {
           </select>
         </div>
 
-        <button 
-          onClick={exportToExcel}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
-        >
-          <span>📊</span> Exportar Excel
-        </button>
+        {/* SOLO ADMIN PUEDE EXPORTAR */}
+        <RequireAdmin>
+          <button 
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
+          >
+            <span>📊</span> Exportar Excel
+          </button>
+        </RequireAdmin>
       </div>
 
       {/* Tabla */}
@@ -124,12 +128,17 @@ const AssetTable = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serie</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
+                
+                {/* Columna de Acciones solo visible para Admin */}
+                <RequireAdmin>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </RequireAdmin>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAssets.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={userRole === 'admin' ? 7 : 6} className="px-6 py-8 text-center text-gray-500">
                     No hay activos registrados
                   </td>
                 </tr>
@@ -151,6 +160,14 @@ const AssetTable = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{asset.numero_serie}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.ubicacion}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.responsable}</td>
+                    
+                    {/* Botones de acción protegidos */}
+                    <RequireAdmin>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <button className="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
+                        <button className="text-red-600 hover:text-red-900">Borrar</button>
+                      </td>
+                    </RequireAdmin>
                   </tr>
                 ))
               )}
