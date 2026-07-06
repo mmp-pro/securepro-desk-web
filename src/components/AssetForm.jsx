@@ -1,7 +1,14 @@
 // src/components/AssetForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { createAsset, updateAsset } from '../services/assetService';
-import Tesseract from 'tesseract.js';
+import Tesseract from 'tesseract.js/dist/tesseract.min.js';
+
+// Configuración CRÍTICA para producción (Vercel/Netlify)
+const workerOptions = {
+  workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+  langPath: 'https://tessdata.projectnaptha.com/',
+  corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+};
 
 const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -88,11 +95,12 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     setOcrProgress(30);
 
     try {
-      // Procesar imagen con Tesseract
+      // Procesar imagen con Tesseract usando workerOptions para producción
       const result = await Tesseract.recognize(
         canvas.toDataURL('image/png'),
-        'eng', // Idioma inglés (mejor para series alfanuméricos)
+        'eng', 
         {
+          ...workerOptions, // ← ESTO EVITA EL ERROR DE BUILD EN VERCEL
           logger: (m) => {
             if (m.status === 'recognizing text') {
               setOcrProgress(30 + Math.round(m.progress * 70));
@@ -101,7 +109,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         }
       );
 
-      // Limpiar texto detectado: quitar espacios, saltos de línea y caracteres no alfanuméricos
+      // Limpiar texto detectado
       const rawText = result.data.text.trim();
       const cleanedText = rawText.replace(/[^a-zA-Z0-9\-_.]/g, '').toUpperCase();
       
@@ -156,7 +164,6 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center rounded-lg p-4">
             <div className="relative w-full max-w-md border-4 border-indigo-500 rounded-lg overflow-hidden">
               <video ref={videoRef} className="w-full h-64 object-cover bg-gray-900" autoPlay playsInline muted></video>
-              {/* Canvas oculto para capturar frames */}
               <canvas ref={canvasRef} className="hidden"></canvas>
               
               {/* Guía visual centrada */}
@@ -283,7 +290,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
                   className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 font-bold flex items-center justify-center min-w-[44px]"
                   title="Escanear texto con cámara"
                 >
-                  📷
+                  
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">Lee texto impreso, etiquetas y códigos</p>
