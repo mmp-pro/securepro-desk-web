@@ -88,11 +88,20 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     return matchCategoria && matchEstado && matchUbicacion && matchSucursal;
   });
 
-  const stats = {
-    total: assets.length,
-    valorTotal: assets.reduce((sum, a) => sum + (parseFloat(a.costo) || 0), 0),
-    operativos: assets.filter(a => a.estado === 'Activo').length,
-    reparacion: assets.filter(a => a.estado === 'En reparación').length
+  // ✅ ESTADÍSTICAS DINÁMICAS BASADAS EN EL FILTRO ACTIVO
+  const dynamicStats = {
+    // Determina el título de la primera tarjeta según qué filtro está activo
+    label: filterCategoria !== 'Todas las categorías' ? `Total ${filterCategoria}` : 
+           filterEstado !== 'Todos los estados' ? `Total ${filterEstado}` :
+           filterUbicacion !== 'Todas las ubicaciones' ? `Total en ${filterUbicacion}` :
+           filterSucursal !== 'Todas las sucursales' ? `Total ${filterSucursal}` :
+           'Total de activos',
+    
+    // Calcula los números SOLO sobre los activos visibles (filtrados)
+    total: filteredAssets.length,
+    valorTotal: filteredAssets.reduce((sum, a) => sum + (parseFloat(a.costo) || 0), 0),
+    operativos: filteredAssets.filter(a => a.estado === 'Activo').length,
+    reparacion: filteredAssets.filter(a => a.estado === 'En reparación').length
   };
 
   const exportToExcel = () => {
@@ -108,23 +117,37 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
 
   return (
     <div className="space-y-6">
-      {/* Estadísticas */}
+      {/* ✅ Estadísticas Contextuales y Dinámicas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        
+        {/* Tarjeta 1: Total (Título cambia según el filtro) */}
         <div className="card border-l-4 border-l-blue-500">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total de activos</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{dynamicStats.label}</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{dynamicStats.total}</p>
         </div>
+
+        {/* Tarjeta 2: Valor Total (Calculado sobre filtrados) */}
         <div className="card border-l-4 border-l-green-500">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Valor total</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>${stats.valorTotal.toLocaleString('es-MX')}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Valor total filtrado</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            ${dynamicStats.valorTotal.toLocaleString('es-MX')}
+          </p>
         </div>
+
+        {/* Tarjeta 3: Operativos (Solo de los visibles) */}
         <div className="card border-l-4 border-l-emerald-500">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Operativos</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.operativos}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Operativos (filtrados)</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            {dynamicStats.operativos}
+          </p>
         </div>
+
+        {/* Tarjeta 4: En Reparación (Solo de los visibles) */}
         <div className="card border-l-4 border-l-orange-500">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>En reparación</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.reparacion}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>En reparación (filtrados)</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            {dynamicStats.reparacion}
+          </p>
         </div>
       </div>
 
@@ -200,7 +223,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
               disabled={importing}
               className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {importing ? '⏳ Importando...' : '📥 Importar Excel'}
+              {importing ? '⏳ Importando...' : ' Importar Excel'}
             </button>
           </RequireAdmin>
 
