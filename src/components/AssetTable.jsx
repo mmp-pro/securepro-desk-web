@@ -12,7 +12,6 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
   const [filterCategoria, setFilterCategoria] = useState('Todas las categorías');
   const [filterEstado, setFilterEstado] = useState('Todos los estados');
   const [filterUbicacion, setFilterUbicacion] = useState('Todas las ubicaciones');
-  // ✅ NUEVO ESTADO PARA FILTRO DE SUCURSAL
   const [filterSucursal, setFilterSucursal] = useState('Todas las sucursales');
   
   const fileInputRef = useRef(null);
@@ -68,7 +67,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
       await loadAssets();
     } catch (error) {
       console.error(error);
-      alert('❌ Error al importar: ' + error.message);
+      alert(' Error al importar: ' + error.message);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -79,7 +78,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
     fileInputRef.current?.click();
   };
 
-  // ✅ LÓGICA DE FILTRADO ACTUALIZADA CON SUCURSAL
+  // ✅ LÓGICA DE FILTRADO ACTUALIZADA CON SUCURSAL Y UBICACIÓN
   const filteredAssets = assets.filter(asset => {
     const matchCategoria = filterCategoria === 'Todas las categorías' || asset.categoria === filterCategoria;
     const matchEstado = filterEstado === 'Todos los estados' || asset.estado === filterEstado;
@@ -104,36 +103,36 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--accent-color)' }}></div></div>;
   }
 
   return (
     <div className="space-y-6">
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-          <p className="text-sm text-gray-600">Total de activos</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <div className="card border-l-4 border-l-blue-500">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total de activos</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-          <p className="text-sm text-gray-600">Valor total</p>
-          <p className="text-2xl font-bold text-gray-900">${stats.valorTotal.toLocaleString('es-MX')}</p>
+        <div className="card border-l-4 border-l-green-500">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Valor total</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>${stats.valorTotal.toLocaleString('es-MX')}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-500">
-          <p className="text-sm text-gray-600">Operativos</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.operativos}</p>
+        <div className="card border-l-4 border-l-emerald-500">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Operativos</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.operativos}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
-          <p className="text-sm text-gray-600">En reparación</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.reparacion}</p>
+        <div className="card border-l-4 border-l-orange-500">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>En reparación</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.reparacion}</p>
         </div>
       </div>
 
       {/* Filtros y acciones */}
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-lg shadow">
+      <div className="card flex flex-wrap gap-4 items-center justify-between">
         <div className="flex gap-3 flex-wrap">
           <select 
-            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="input-field w-auto"
             value={filterCategoria}
             onChange={(e) => setFilterCategoria(e.target.value)}
           >
@@ -151,7 +150,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
           </select>
 
           <select 
-            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="input-field w-auto"
             value={filterEstado}
             onChange={(e) => setFilterEstado(e.target.value)}
           >
@@ -163,7 +162,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
           </select>
 
           <select 
-            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="input-field w-auto"
             value={filterUbicacion}
             onChange={(e) => setFilterUbicacion(e.target.value)}
           >
@@ -173,9 +172,8 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
             ))}
           </select>
 
-          {/* ✅ NUEVO SELECTOR DINÁMICO DE SUCURSALES */}
           <select 
-            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+            className="input-field w-auto"
             value={filterSucursal}
             onChange={(e) => setFilterSucursal(e.target.value)}
           >
@@ -186,7 +184,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
           </select>
         </div>
 
-        {/* Botones de Acción */}
+        {/* Botones de Acción Agrupados */}
         <div className="flex gap-3">
           <input 
             ref={fileInputRef}
@@ -200,72 +198,72 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
             <button 
               onClick={triggerFileUpload}
               disabled={importing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {importing ? 'Importando...' : 'Importar Excel'}
+              {importing ? '⏳ Importando...' : '📥 Importar Excel'}
             </button>
           </RequireAdmin>
 
           <RequireAdmin>
             <button 
               onClick={exportToExcel}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium transition-colors flex items-center gap-2"
+              className="btn-primary flex items-center gap-2"
+              style={{ backgroundColor: 'var(--success-color)' }}
             >
-              <span>📊</span> Exportar Excel
+              📊 Exportar Excel
             </button>
           </RequireAdmin>
         </div>
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serie</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ubicación</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
+                <th className="table-header">Nombre</th>
+                <th className="table-header">Categoría</th>
+                <th className="table-header">Estado</th>
+                <th className="table-header">Serie</th>
+                <th className="table-header">Sucursal</th>
+                <th className="table-header">Ubicación</th>
+                <th className="table-header">Responsable</th>
                 
                 <RequireAdmin>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                  <th className="table-header">Acciones</th>
                 </RequireAdmin>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="table-row">
               {filteredAssets.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={userRole === 'admin' ? 8 : 7} className="table-cell text-center py-8" style={{ color: 'var(--text-secondary)' }}>
                     No hay activos registrados
                   </td>
                 </tr>
               ) : (
                 filteredAssets.map((asset) => (
-                  <tr key={asset.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{asset.nombre}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.categoria}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={asset.id}>
+                    <td className="table-cell font-medium">{asset.nombre}</td>
+                    <td className="table-cell">{asset.categoria}</td>
+                    <td className="table-cell">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        asset.estado === 'Activo' ? 'bg-green-100 text-green-800' :
-                        asset.estado === 'En reparación' ? 'bg-orange-100 text-orange-800' :
-                        asset.estado === 'En resguardo' ? 'bg-blue-100 text-blue-800' :
-                        'bg-red-100 text-red-800'
+                        asset.estado === 'Activo' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                        asset.estado === 'En reparación' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                        asset.estado === 'En resguardo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                        'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
                         {asset.estado}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{asset.numero_serie}</td>
-                    {/* ✅ NUEVA COLUMNA SUCURSAL */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.sucursal || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.ubicacion}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{asset.responsable}</td>
+                    <td className="table-cell font-mono">{asset.numero_serie}</td>
+                    <td className="table-cell">{asset.sucursal || 'N/A'}</td>
+                    <td className="table-cell">{asset.ubicacion}</td>
+                    <td className="table-cell">{asset.responsable}</td>
                     
                     <RequireAdmin>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="table-cell">
                         <button 
                           onClick={() => {
                             console.log('✏️ Clic en Editar - Asset:', asset);
@@ -275,20 +273,22 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
                               console.error('❌ onEdit NO es una función. Recibido:', onEdit);
                             }
                           }}
-                          className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium"
+                          className="mr-3 font-medium hover:underline"
+                          style={{ color: 'var(--accent-color)' }}
                         >
                           Editar
                         </button>
                         <button 
                           onClick={() => {
-                            console.log('🗑️ Clic en Borrar - ID:', asset.id);
+                            console.log('️ Clic en Borrar - ID:', asset.id);
                             if (typeof onDelete === 'function') {
                               onDelete(asset.id);
                             } else {
                               console.error('❌ onDelete NO es una función. Recibido:', onDelete);
                             }
                           }}
-                          className="text-red-600 hover:text-red-900 font-medium"
+                          className="font-medium hover:underline"
+                          style={{ color: 'var(--danger-color)' }}
                         >
                           Borrar
                         </button>
