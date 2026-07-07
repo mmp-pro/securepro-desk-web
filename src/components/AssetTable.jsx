@@ -216,38 +216,38 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Tabla */}
+      {/* Tabla Corregida */}
       <div className="card overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="min-w-full">
+          <table className="min-w-full divide-y divide-[var(--border-color)]">
             <thead>
               <tr>
-                <th className="table-header">Nombre</th>
-                <th className="table-header">Categoría</th>
-                <th className="table-header">Estado</th>
-                <th className="table-header">Serie</th>
-                <th className="table-header">Sucursal</th>
-                <th className="table-header">Ubicación</th>
-                <th className="table-header">Responsable</th>
+                <th className="table-header text-left pl-6">Nombre</th>
+                <th className="table-header text-left">Categoría</th>
+                <th className="table-header text-left">Estado</th>
+                <th className="table-header text-left">Serie</th>
+                <th className="table-header text-left">Sucursal</th>
+                <th className="table-header text-left">Ubicación</th>
+                <th className="table-header text-left">Responsable</th>
                 
                 <RequireAdmin>
-                  <th className="table-header">Acciones</th>
+                  <th className="table-header text-left pr-6">Acciones</th>
                 </RequireAdmin>
               </tr>
             </thead>
-            <tbody className="table-row">
+            <tbody className="divide-y divide-[var(--border-color)]">
               {filteredAssets.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'admin' ? 8 : 7} className="table-cell text-center py-8" style={{ color: 'var(--text-secondary)' }}>
+                  <td colSpan={userRole === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
                     No hay activos registrados
                   </td>
                 </tr>
               ) : (
                 filteredAssets.map((asset) => (
-                  <tr key={asset.id}>
-                    <td className="table-cell font-medium">{asset.nombre}</td>
-                    <td className="table-cell">{asset.categoria}</td>
-                    <td className="table-cell">
+                  <tr key={asset.id} className="hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{asset.nombre}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-primary)' }}>{asset.categoria}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                         asset.estado === 'Activo' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                         asset.estado === 'En reparación' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
@@ -257,36 +257,22 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
                         {asset.estado}
                       </span>
                     </td>
-                    <td className="table-cell font-mono">{asset.numero_serie}</td>
-                    <td className="table-cell">{asset.sucursal || 'N/A'}</td>
-                    <td className="table-cell">{asset.ubicacion}</td>
-                    <td className="table-cell">{asset.responsable}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{asset.numero_serie}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-primary)' }}>{asset.sucursal || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-primary)' }}>{asset.ubicacion}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-primary)' }}>{asset.responsable}</td>
                     
                     <RequireAdmin>
-                      <td className="table-cell">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button 
-                          onClick={() => {
-                            console.log('✏️ Clic en Editar - Asset:', asset);
-                            if (typeof onEdit === 'function') {
-                              onEdit(asset);
-                            } else {
-                              console.error('❌ onEdit NO es una función. Recibido:', onEdit);
-                            }
-                          }}
+                          onClick={() => onEdit(asset)}
                           className="mr-3 font-medium hover:underline"
                           style={{ color: 'var(--accent-color)' }}
                         >
                           Editar
                         </button>
                         <button 
-                          onClick={() => {
-                            console.log('️ Clic en Borrar - ID:', asset.id);
-                            if (typeof onDelete === 'function') {
-                              onDelete(asset.id);
-                            } else {
-                              console.error('❌ onDelete NO es una función. Recibido:', onDelete);
-                            }
-                          }}
+                          onClick={() => onDelete(asset.id)}
                           className="font-medium hover:underline"
                           style={{ color: 'var(--danger-color)' }}
                         >
