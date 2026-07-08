@@ -60,13 +60,11 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   // ✅ MANEJADOR DE CAMBIOS CON MAYÚSCULAS AUTOMÁTICAS
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Convertir a mayúsculas inmediatamente al escribir
     setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
   };
 
   // --- LÓGICA DE ESCANEO AUTOMÁTICO (OCR/BARRAS) ---
   const handleScanSuccess = (text) => {
-    // Asegurar mayúsculas en el escaneo también
     setFormData(prev => ({ ...prev, numero_serie: text.toUpperCase() }));
     stopCamera();
     if (navigator.vibrate) navigator.vibrate(200);
@@ -186,10 +184,9 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     recognitionRef.current = recognition;
 
     setDictatingField(fieldName);
-    setScanStatus(`🎤 Dictando: ${fieldName}... (Di "guardar" para enviar)`);
+    setScanStatus(` Dictando: ${fieldName}... (Di "GUARDAR" para enviar)`);
 
     recognition.onresult = (event) => {
-      // ✅ CONVERTIR TEXTO DICATADO A MAYÚSCULAS
       let transcript = event.results[0][0].transcript.trim().toUpperCase();
       
       // COMANDO DE VOZ INTELIGENTE
@@ -321,13 +318,38 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               </select>
             </div>
 
+            {/* ✅ NÚMERO DE SERIE CON DICTADO Y ESCANEO INTEGRADOS */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Número de serie</label>
               <div className="flex gap-2">
-                <input type="text" name="numero_serie" value={formData.numero_serie} onChange={handleChange} placeholder="SE LLENA AUTOMÁTICAMENTE..." className="input-field font-mono tracking-wider" />
-                <button type="button" onClick={startCamera} disabled={scanning} className="btn-primary min-w-[50px] flex items-center justify-center text-xl" title="Escaneo automático">📷</button>
+                <input 
+                  type="text" 
+                  name="numero_serie" 
+                  value={formData.numero_serie} 
+                  onChange={handleChange} 
+                  placeholder="DICTA O ESCANEA..." 
+                  className={`input-field font-mono tracking-wider flex-1 ${dictatingField === 'numero_serie' ? 'ring-2 ring-[var(--accent-color)]' : ''}`} 
+                />
+                <button 
+                  type="button"
+                  onClick={() => startVoiceDictation('numero_serie')}
+                  disabled={!!dictatingField || scanning}
+                  className="btn-secondary min-w-[50px] flex items-center justify-center text-xl"
+                  title="Dictar número de serie por voz"
+                >
+                  
+                </button>
+                <button 
+                  type="button" 
+                  onClick={startCamera} 
+                  disabled={scanning || !!dictatingField} 
+                  className="btn-primary min-w-[50px] flex items-center justify-center text-xl" 
+                  title="Escaneo automático por cámara"
+                >
+                  📷
+                </button>
               </div>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Apunta la cámara y espera la detección automática</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Usa el micrófono o apunta la cámara</p>
             </div>
 
             <VoiceInput label="Ubicación" name="ubicacion" placeholder="Ej: OFICINA 301, PISO 3" />
