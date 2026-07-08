@@ -13,7 +13,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     responsable: '',
     costo: '',
     fecha_compra: '',
-    garantia: ''
+    garantia: '',
+    comentarios: '' // ✅ NUEVO CAMPO AGREGADO AL ESTADO
   });
 
   const [loading, setLoading] = useState(false);
@@ -40,7 +41,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         responsable: (initialData.responsable || '').toUpperCase(),
         costo: initialData.costo || '',
         fecha_compra: initialData.fecha_compra || '',
-        garantia: initialData.garantia || ''
+        garantia: initialData.garantia || '',
+        comentarios: initialData.comentarios || '' // ✅ CARGAR COMENTARIOS EXISTENTES
       });
     }
   }, [initialData]);
@@ -54,25 +56,28 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   const handleChange = (e) => {
     const { name, value, tagName, type } = e.target;
     
-    // Para selects e inputs numéricos/date, usamos el valor tal cual (o mayúsculas si es texto)
-    // Para inputs de texto, convertimos a mayúsculas y manejamos el cursor
     let finalValue = value;
 
+    // Lógica específica para inputs de texto (Mayúsculas + Cursor)
     if (tagName === 'INPUT' && (type === 'text' || !type)) {
       finalValue = value.toUpperCase();
       
-      // Lógica específica para mantener el cursor en inputs de texto
       const cursorPos = e.target.selectionStart;
       setFormData(prev => ({ ...prev, [name]: finalValue }));
       
-      // Usamos requestAnimationFrame para asegurar que el DOM se actualizó antes de mover el cursor
       requestAnimationFrame(() => {
         if (e.target && e.target.setSelectionRange) {
           e.target.setSelectionRange(cursorPos, cursorPos);
         }
       });
-    } else {
-      // Para SELECTS, INPUT NUMBER, DATE, etc., actualización directa sin manipular cursor
+    } 
+    // Lógica para Textarea (Comentarios): Mayúsculas pero SIN manipular cursor con setSelectionRange
+    else if (tagName === 'TEXTAREA') {
+      finalValue = value.toUpperCase();
+      setFormData(prev => ({ ...prev, [name]: finalValue }));
+    }
+    // Lógica para SELECTS, NUMBER, DATE: Valor directo sin interferencias
+    else {
       setFormData(prev => ({ ...prev, [name]: finalValue }));
     }
   };
@@ -294,6 +299,20 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Garantía (meses)</label>
               <input type="number" name="garantia" value={formData.garantia} onChange={handleChange} placeholder="12" min="0" className="input-field" />
             </div>
+
+            {/* ✅ NUEVO CAMPO: COMENTARIOS / OBSERVACIONES */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Comentarios / Observaciones</label>
+              <textarea 
+                name="comentarios" 
+                value={formData.comentarios} 
+                onChange={handleChange} 
+                placeholder="Ej: Pantalla con rayón leve, falta cargador original, equipo reacondicionado..." 
+                rows="3" 
+                className="input-field resize-none" 
+              ></textarea>
+            </div>
+
           </div>
 
           {/* Botones de acción */}

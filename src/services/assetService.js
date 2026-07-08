@@ -75,20 +75,21 @@ export const bulkImportAssets = async (assetsArray) => {
       
       // Mapeo flexible: acepta nombres técnicos y nombres comunes de Excel
       batch.set(docRef, {
-      nombre: item.nombre || item['Nombre'] || '',
-      categoria: item.categoria || item['Categoría'] || 'Otro',
-      estado: item.estado || item['Estado'] || 'Activo',
-      numero_serie: item.numero_serie || item['Serie'] || '',
-      sucursal: item.sucursal || item['Sucursal'] || '', // ✅ NUEVO
-      ubicacion: item.ubicacion || item['Ubicación'] || '',
-      responsable: item.responsable || item['Responsable'] || '',
-      costo: parseFloat(item.costo || item['Costo']) || 0,
-      fecha_compra: item.fecha_compra || item['Fecha Compra'] || '',
-      garantia: item.garantia || item['Garantía'] || '',
-      createdAt: timestamp,
-      updatedAt: timestamp
+        nombre: item.nombre || item['Nombre'] || '',
+        categoria: item.categoria || item['Categoría'] || 'Otro',
+        estado: item.estado || item['Estado'] || 'Activo',
+        numero_serie: item.numero_serie || item['Serie'] || '',
+        sucursal: item.sucursal || item['Sucursal'] || '', 
+        ubicacion: item.ubicacion || item['Ubicación'] || '',
+        responsable: item.responsable || item['Responsable'] || '',
+        costo: parseFloat(item.costo || item['Costo']) || 0,
+        fecha_compra: item.fecha_compra || item['Fecha Compra'] || '',
+        garantia: item.garantia || item['Garantía'] || '',
+        comentarios: item.comentarios || item['Comentarios'] || '', // ✅ AGREGADO PARA IMPORTACIÓN MASIVA
+        createdAt: timestamp,
+        updatedAt: timestamp
       });
-      });
+    });
 
     // Ejecutar el lote en Firebase
     await batch.commit();
