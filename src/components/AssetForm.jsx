@@ -50,22 +50,31 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     return () => stopCamera();
   }, []);
 
-  // ✅ MANEJADOR DE CAMBIOS CON MAYÚSCULAS AUTOMÁTICAS Y CURSOR FLUIDO
+  // ✅ MANEJADOR DE CAMBIOS OPTIMIZADO Y SEGURO
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    const upperValue = value.toUpperCase();
+    const { name, value, tagName, type } = e.target;
     
-    // Guardar posición actual del cursor ANTES de actualizar estado
-    const cursorPos = e.target.selectionStart;
-    
-    setFormData(prev => ({ ...prev, [name]: upperValue }));
-    
-    // Restaurar cursor DESPUÉS del re-renderizado
-    setTimeout(() => {
-      if (e.target) {
-        e.target.setSelectionRange(cursorPos, cursorPos);
-      }
-    }, 0);
+    // Para selects e inputs numéricos/date, usamos el valor tal cual (o mayúsculas si es texto)
+    // Para inputs de texto, convertimos a mayúsculas y manejamos el cursor
+    let finalValue = value;
+
+    if (tagName === 'INPUT' && (type === 'text' || !type)) {
+      finalValue = value.toUpperCase();
+      
+      // Lógica específica para mantener el cursor en inputs de texto
+      const cursorPos = e.target.selectionStart;
+      setFormData(prev => ({ ...prev, [name]: finalValue }));
+      
+      // Usamos requestAnimationFrame para asegurar que el DOM se actualizó antes de mover el cursor
+      requestAnimationFrame(() => {
+        if (e.target && e.target.setSelectionRange) {
+          e.target.setSelectionRange(cursorPos, cursorPos);
+        }
+      });
+    } else {
+      // Para SELECTS, INPUT NUMBER, DATE, etc., actualización directa sin manipular cursor
+      setFormData(prev => ({ ...prev, [name]: finalValue }));
+    }
   };
 
   // --- LÓGICA DE ESCANEO AUTOMÁTICO (OCR/BARRAS) ---
