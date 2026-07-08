@@ -18,11 +18,16 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
 
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [scanStatus, setScanStatus] = useState('Iniciando cámara...'); // Feedback visual en tiempo real
+  const [scanStatus, setScanStatus] = useState('Iniciando cámara...');
+  
+  // Estado para controlar qué campo está recibiendo dictado por voz
+  const [dictatingField, setDictatingField] = useState(null); 
+  
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const detectionIntervalRef = useRef(null); // Controla el loop automático
+  const detectionIntervalRef = useRef(null);
+  const recognitionRef = useRef(null); // Referencia para detener el micrófono al cerrar
   
   const isEditing = !!initialData;
 
@@ -44,9 +49,14 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     }
   }, [initialData]);
 
-  // Limpiar cámara e intervalos al cerrar el modal
+  // Limpiar recursos (cámara y micrófono) al cerrar el modal
   useEffect(() => {
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -54,11 +64,10 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Manejador centralizado para cuando se detecta algo exitosamente
+  // --- LÓGICA DE ESCANEO AUTOMÁTICO (OCR/BARRAS) ---
   const handleScanSuccess = (text) => {
     setFormData(prev => ({ ...prev, numero_serie: text }));
     stopCamera();
-    // Vibración táctil para confirmar lectura sin mirar pantalla
     if (navigator.vibrate) navigator.vibrate(200);
   };
 
@@ -75,10 +84,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-      
-      // Iniciar el loop de detección automática inmediatamente
       startAutoDetectionLoop();
-      
     } catch (err) {
       alert('No se pudo acceder a la cámara. Verifica permisos.');
       setScanning(false);
@@ -88,10 +94,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   const startAutoDetectionLoop = () => {
     if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
 
-    // Loop principal: analiza un frame cada 800ms para no saturar el CPU del celular
     detectionIntervalRef.current = setInterval(async () => {
       if (!videoRef.current || !canvasRef.current || videoRef.current.paused) return;
-
       const video = videoRef.current;
       const canvas = canvasRef.current;
       
@@ -102,32 +106,29 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // 1. Intentar detectar Códigos de Barras / QR (Nativo, instantáneo y ligero)
+      // 1. Detectar Códigos de Barras / QR
       if (window.BarcodeDetector) {
         try {
           const detector = new window.BarcodeDetector({ formats: ['code_128', 'qr_code', 'ean_13', 'code_39'] });
           const barcodes = await detector.detect(canvas);
           if (barcodes.length > 0) {
             handleScanSuccess(barcodes[0].rawValue.toUpperCase().replace(/[^A-Z0-9\-_.]/g, ''));
-            return; // Detiene el intervalo al tener éxito
+            return;
           }
-        } catch (e) { /* Ignorar errores de detector nativo */ }
+        } catch (e) { /* Ignorar */ }
       }
 
-      // 2. Si no hay código de barras, intentar OCR (Texto impreso)
+      // 2. Intentar OCR (Texto impreso)
       if (window.Tesseract) {
         setScanStatus('Analizando texto...');
         try {
           const result = await window.Tesseract.recognize(canvas, 'eng', {
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.' // Solo caracteres válidos para series
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.'
           });
           
-          // Filtrar resultados buscando líneas que parezcan números de serie
           const lines = result.data.text.split('\n').map(l => l.trim().toUpperCase());
           const validSeries = lines.find(line => 
-            line.length > 4 && 
-            /^[A-Z0-9\-_.]+$/.test(line) && 
-            !line.includes(' ')
+            line.length > 4 && /^[A-Z0-9\-_.]+$/.test(line) && !line.includes(' ')
           );
 
           if (validSeries) {
@@ -135,9 +136,8 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           } else {
             setScanStatus('Enfoca mejor el texto...');
           }
-        } catch (e) { /* Ignorar errores de OCR */ }
+        } catch (e) { /* Ignorar */ }
       } else {
-        // Cargar Tesseract dinámicamente desde CDN si aún no existe
         setScanStatus('Cargando motor de lectura...');
         if (!window.tesseractLoading) {
           window.tesseractLoading = true;
@@ -148,7 +148,6 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           document.head.appendChild(script);
         }
       }
-
     }, 800); 
   };
 
@@ -166,8 +165,71 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
+  // --- NUEVA LÓGICA DE DICTADO POR VOZ ---
+  const startVoiceDictation = (fieldName) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome, Edge o Safari.');
+      return;
+    }
+
+    // Detener cualquier dictado anterior
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-MX'; // Español de México
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
+
+    setDictatingField(fieldName);
+    setScanStatus(`🎤 Dictando: ${fieldName}... (Di "guardar" para enviar)`);
+
+    recognition.onresult = (event) => {
+      let transcript = event.results[0][0].transcript.trim();
+      
+      // COMANDO DE VOZ INTELIGENTE: Si dice "guardar", ejecutar submit
+      if (transcript.toLowerCase() === 'guardar') {
+        handleSubmit(new Event('submit')); // Simular click en botón guardar
+        setDictatingField(null);
+        setScanStatus('✅ Guardando automáticamente...');
+        return;
+      }
+
+      // Actualizar el campo correspondiente
+      setFormData(prev => ({ ...prev, [fieldName]: transcript }));
+      setScanStatus(`✅ "${transcript}" capturado`);
+      
+      // Limpiar estado visual después de 2 segundos
+      setTimeout(() => {
+        setDictatingField(null);
+        setScanStatus('');
+      }, 2000);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Error de reconocimiento:', event.error);
+      setDictatingField(null);
+      setScanStatus('️ Error al escuchar. Intenta de nuevo.');
+      setTimeout(() => setScanStatus(''), 3000);
+    };
+
+    recognition.onend = () => {
+      // Si terminó pero no hubo resultado válido, resetear estado
+      if (dictatingField === fieldName) {
+        setDictatingField(null);
+        setScanStatus('');
+      }
+    };
+
+    recognition.start();
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setLoading(true);
     try {
       if (isEditing) {
@@ -183,32 +245,53 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     }
   };
 
+  // Componente reutilizable para inputs con botón de micrófono
+  const VoiceInput = ({ label, name, placeholder, required = false }) => (
+    <div>
+      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          name={name} 
+          value={formData[name]} 
+          onChange={handleChange} 
+          required={required} 
+          placeholder={placeholder} 
+          className={`input-field flex-1 ${dictatingField === name ? 'ring-2 ring-[var(--accent-color)]' : ''}`} 
+        />
+        <button 
+          type="button"
+          onClick={() => startVoiceDictation(name)}
+          disabled={!!dictatingField} // Evitar múltiples dictados simultáneos
+          className="btn-secondary min-w-[50px] flex items-center justify-center text-xl"
+          title={`Dictar ${label} por voz`}
+        >
+          🎤
+        </button>
+      </div>
+      <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+        Toca el micrófono y habla claramente
+      </p>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
         
-        {/* Modal de Cámara Automática (Sin botones de captura) */}
+        {/* Modal de Cámara Automática */}
         {scanning && (
           <div className="absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center rounded-lg p-4">
             <div className="relative w-full max-w-md border-4 rounded-lg overflow-hidden shadow-2xl" style={{ borderColor: 'var(--accent-color)' }}>
               <video ref={videoRef} className="w-full h-80 object-cover bg-gray-900" autoPlay playsInline muted></video>
               <canvas ref={canvasRef} className="hidden"></canvas>
-              
-              {/* Marco de enfoque animado */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-64 h-16 border-2 rounded animate-pulse" style={{ borderColor: 'var(--warning-color)', boxShadow: '0 0 15px var(--warning-color)' }}></div>
               </div>
             </div>
-            
             <p className="text-white mt-6 font-bold text-xl">{scanStatus}</p>
             <p className="text-gray-400 text-sm mb-6 text-center max-w-xs">Mantén el dispositivo estable y asegúrate de que haya buena luz</p>
-            
-            <button 
-              onClick={stopCamera}
-              className="btn-secondary px-8 py-3 font-bold"
-            >
-              Cancelar Escaneo
-            </button>
+            <button onClick={stopCamera} className="btn-secondary px-8 py-3 font-bold">Cancelar Escaneo</button>
           </div>
         )}
 
@@ -220,15 +303,12 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           <button onClick={onCancel} className="text-2xl font-bold" style={{ color: 'var(--text-secondary)' }}>&times;</button>
         </div>
 
-        {/* Formulario Original Conservado Completo */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* Nombre */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Nombre del equipo *</label>
-              <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} required placeholder="Ej: Laptop Dell Latitude" className="input-field" />
-            </div>
+            {/* ✅ Nombre con Dictado por Voz */}
+            <VoiceInput label="Nombre del equipo *" name="nombre" placeholder="Ej: Laptop Dell Latitude" required />
 
             {/* Categoría */}
             <div>
@@ -246,33 +326,24 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            {/* ✅ SERIE CON ESCANEO AUTOMÁTICO INTEGRADO */}
+            {/* Serie con Escaneo Automático */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Número de serie</label>
               <div className="flex gap-2">
                 <input type="text" name="numero_serie" value={formData.numero_serie} onChange={handleChange} placeholder="Se llena automáticamente..." className="input-field font-mono tracking-wider" />
-                <button type="button" onClick={startCamera} disabled={scanning} className="btn-primary min-w-[50px] flex items-center justify-center text-xl" title="Escaneo automático"></button>
+                <button type="button" onClick={startCamera} disabled={scanning} className="btn-primary min-w-[50px] flex items-center justify-center text-xl" title="Escaneo automático">📷</button>
               </div>
               <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Apunta la cámara y espera la detección automática</p>
             </div>
 
-            {/* Ubicación */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Ubicación</label>
-              <input type="text" name="ubicacion" value={formData.ubicacion} onChange={handleChange} placeholder="Ej: Oficina 301, Piso 3" className="input-field" />
-            </div>
+            {/* ✅ Ubicación con Dictado por Voz */}
+            <VoiceInput label="Ubicación" name="ubicacion" placeholder="Ej: Oficina 301, Piso 3" />
 
-            {/* Sucursal */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Sucursal</label>
-              <input type="text" name="sucursal" value={formData.sucursal} onChange={handleChange} placeholder="Ej: Sucursal Centro, Planta Norte" className="input-field" />
-            </div>
+            {/* ✅ Sucursal con Dictado por Voz */}
+            <VoiceInput label="Sucursal" name="sucursal" placeholder="Ej: Sucursal Centro, Planta Norte" />
 
-            {/* Responsable */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Responsable</label>
-              <input type="text" name="responsable" value={formData.responsable} onChange={handleChange} placeholder="Ej: Juan Pérez" className="input-field" />
-            </div>
+            {/* ✅ Responsable con Dictado por Voz */}
+            <VoiceInput label="Responsable" name="responsable" placeholder="Ej: Juan Pérez" />
 
             {/* Costo */}
             <div>
