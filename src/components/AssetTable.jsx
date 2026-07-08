@@ -51,7 +51,7 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
       const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
       if (jsonData.length === 0) {
-        alert('⚠️ El archivo Excel está vacío o no tiene formato válido.');
+        alert('️ El archivo Excel está vacío o no tiene formato válido.');
         return;
       }
 
@@ -90,14 +90,12 @@ const AssetTable = ({ userRole, onEdit, onDelete }) => {
 
   // ✅ ESTADÍSTICAS DINÁMICAS BASADAS EN EL FILTRO ACTIVO
   const dynamicStats = {
-    // Determina el título de la primera tarjeta según qué filtro está activo
     label: filterCategoria !== 'Todas las categorías' ? `Total ${filterCategoria}` : 
            filterEstado !== 'Todos los estados' ? `Total ${filterEstado}` :
            filterUbicacion !== 'Todas las ubicaciones' ? `Total en ${filterUbicacion}` :
            filterSucursal !== 'Todas las sucursales' ? `Total ${filterSucursal}` :
            'Total de activos',
     
-    // Calcula los números SOLO sobre los activos visibles (filtrados)
     total: filteredAssets.length,
     valorTotal: filteredAssets.reduce((sum, a) => sum + (parseFloat(a.costo) || 0), 0),
     operativos: filteredAssets.filter(a => a.estado === 'Activo').length,
