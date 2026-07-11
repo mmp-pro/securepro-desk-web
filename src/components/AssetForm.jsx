@@ -14,7 +14,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     costo: '',
     fecha_compra: '',
     garantia: '',
-    comentarios: '' // ✅ NUEVO CAMPO AGREGADO AL ESTADO
+    observaciones: '' // ✅ CAMPO CASE-SENSITIVE
   });
 
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
   
   const isEditing = !!initialData;
 
-  // Precargar datos si estamos editando (asegurando mayúsculas)
+  // Precargar datos si estamos editando
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -42,7 +42,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
         costo: initialData.costo || '',
         fecha_compra: initialData.fecha_compra || '',
         garantia: initialData.garantia || '',
-        comentarios: initialData.comentarios || '' // ✅ CARGAR COMENTARIOS EXISTENTES
+        observaciones: initialData.observaciones || '' // ✅ PRESERVA MAYÚSCULAS/MINÚSCULAS ORIGINALES
       });
     }
   }, [initialData]);
@@ -52,33 +52,25 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
     return () => stopCamera();
   }, []);
 
-  // ✅ MANEJADOR DE CAMBIOS OPTIMIZADO Y SEGURO
+  // ✅ MANEJADOR DE CAMBIOS CON LÓGICA DIFERENCIADA POR CAMPO
   const handleChange = (e) => {
-    const { name, value, tagName, type } = e.target;
+    const { name, value } = e.target;
     
-    let finalValue = value;
-
-    // Lógica específica para inputs de texto (Mayúsculas + Cursor)
-    if (tagName === 'INPUT' && (type === 'text' || !type)) {
-      finalValue = value.toUpperCase();
-      
-      const cursorPos = e.target.selectionStart;
-      setFormData(prev => ({ ...prev, [name]: finalValue }));
-      
-      requestAnimationFrame(() => {
+    // Guardar posición actual del cursor ANTES de actualizar estado
+    const cursorPos = e.target.selectionStart;
+    
+    // Observaciones respeta case, los demás van a mayúsculas
+    const processedValue = name === 'observaciones' ? value : value.toUpperCase();
+    
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    
+    // Restaurar cursor DESPUÉS del re-renderizado (solo para inputs textuales)
+    if (name !== 'observaciones') {
+      setTimeout(() => {
         if (e.target && e.target.setSelectionRange) {
           e.target.setSelectionRange(cursorPos, cursorPos);
         }
-      });
-    } 
-    // Lógica para Textarea (Comentarios): Mayúsculas pero SIN manipular cursor con setSelectionRange
-    else if (tagName === 'TEXTAREA') {
-      finalValue = value.toUpperCase();
-      setFormData(prev => ({ ...prev, [name]: finalValue }));
-    }
-    // Lógica para SELECTS, NUMBER, DATE: Valor directo sin interferencias
-    else {
-      setFormData(prev => ({ ...prev, [name]: finalValue }));
+      }, 0);
     }
   };
 
@@ -228,7 +220,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
           <button onClick={onCancel} className="text-2xl font-bold" style={{ color: 'var(--text-secondary)' }}>&times;</button>
         </div>
 
-        {/* Formulario Original Conservado Completo */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
@@ -254,7 +246,7 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            {/* ✅ SERIE CON ESCANEO AUTOMÁTICO INTEGRADO */}
+            {/* Serie con Escaneo Automático */}
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Número de serie</label>
               <div className="flex gap-2">
@@ -299,20 +291,19 @@ const AssetForm = ({ initialData = null, onSuccess, onCancel }) => {
               <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Garantía (meses)</label>
               <input type="number" name="garantia" value={formData.garantia} onChange={handleChange} placeholder="12" min="0" className="input-field" />
             </div>
+          </div>
 
-            {/* ✅ NUEVO CAMPO: COMENTARIOS / OBSERVACIONES */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Comentarios / Observaciones</label>
-              <textarea 
-                name="comentarios" 
-                value={formData.comentarios} 
-                onChange={handleChange} 
-                placeholder="Ej: Pantalla con rayón leve, falta cargador original, equipo reacondicionado..." 
-                rows="3" 
-                className="input-field resize-none" 
-              ></textarea>
-            </div>
-
+          {/* ✅ COMENTARIOS / OBSERVACIONES (Case-Sensitive) */}
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Comentarios / Observaciones</label>
+            <textarea 
+              name="observaciones" 
+              value={formData.observaciones} 
+              onChange={handleChange} 
+              placeholder="Ej: Pantalla con rayón leve, falta cargador original, equipo reacondicionado..." 
+              rows={3}
+              className="input-field resize-none"
+            />
           </div>
 
           {/* Botones de acción */}
